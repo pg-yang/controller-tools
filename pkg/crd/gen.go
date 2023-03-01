@@ -95,7 +95,7 @@ func (Generator) RegisterMarkers(into *markers.Registry) error {
 }
 
 // transformRemoveCRDStatus ensures we do not write the CRD status field.
-func transformRemoveCRDStatus(obj map[string]interface{}) error {
+func transformRemoveCRDStatus(obj map[interface{}]interface{}) error {
 	delete(obj, "status")
 	return nil
 }

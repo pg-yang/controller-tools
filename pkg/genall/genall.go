@@ -123,11 +123,11 @@ type GenerationContext struct {
 
 // WriteYAMLOptions implements the Options Pattern for WriteYAML.
 type WriteYAMLOptions struct {
-	transform func(obj map[string]interface{}) error
+	transform func(obj map[interface{}]interface{}) error
 }
 
 // WithTransform applies a transformation to objects just before writing them.
-func WithTransform(transform func(obj map[string]interface{}) error) *WriteYAMLOptions {
+func WithTransform(transform func(obj map[interface{}]interface{}) error) *WriteYAMLOptions {
 	return &WriteYAMLOptions{
 		transform: transform,
 	}
@@ -178,7 +178,7 @@ func yamlMarshal(o interface{}, options ...*WriteYAMLOptions) ([]byte, error) {
 // yamlJSONToYAMLWithFilter is based on sigs.k8s.io/yaml.JSONToYAML, but allows for transforming the final data before writing.
 func yamlJSONToYAMLWithFilter(j []byte, options ...*WriteYAMLOptions) ([]byte, error) {
 	// Convert the JSON to an object.
-	var jsonObj map[string]interface{}
+	var jsonObj map[interface{}]interface{}
 	// We are using yaml.Unmarshal here (instead of json.Unmarshal) because the
 	// Go JSON library doesn't try to pick the right number type (int, float,
 	// etc.) when unmarshalling to interface{}, it just picks float64
@@ -187,7 +187,7 @@ func yamlJSONToYAMLWithFilter(j []byte, options ...*WriteYAMLOptions) ([]byte, e
 	if err := rawyaml.Unmarshal(j, &jsonObj); err != nil {
 		return nil, err
 	}
-
+	removeNilFields(jsonObj)
 	for _, option := range options {
 		if option.transform != nil {
 			if err := option.transform(jsonObj); err != nil {
@@ -198,6 +198,16 @@ func yamlJSONToYAMLWithFilter(j []byte, options ...*WriteYAMLOptions) ([]byte, e
 
 	// Marshal this object into YAML.
 	return rawyaml.Marshal(jsonObj)
+}
+
+func removeNilFields(m map[interface{}]interface{}) {
+	for k, v := range m {
+		if v == nil {
+			delete(m, k)
+		} else if sub, ok := v.(map[interface{}]interface{}); ok {
+			removeNilFields(sub)
+		}
+	}
 }
 
 // ReadFile reads the given boilerplate artifact using the context's InputRule.
